@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>transformer-internals · encoder vs decoder</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="t-bert">BERT</span><span class="vs">vs</span><span class="t-gpt">GPT-2</span>
+    <span class="sub">same geometry · one sentence · every step opened</span>
+  </div>
+  <div class="runrow">
+    <input id="text-in" type="text" spellcheck="false">
+    <button id="run-btn" class="btn">Run both</button>
+  </div>
+  <div id="status" class="status">—</div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="inputs" class="tab active">1 · Inputs</button>
+  <button data-tab="projections" class="tab">2 · Projections</button>
+  <button data-tab="attention" class="tab">3 · Attention</button>
+  <button data-tab="layer" class="tab">4 · The layer</button>
+  <button data-tab="task" class="tab">5 · Native task</button>
+</nav>
+
+<section class="compare-wrap">
+  <button id="compare-toggle" class="linklike">▸ architecture comparison</button>
+  <table id="compare-table" class="compare" hidden></table>
+</section>
+
+<!-- ============ tab 1: inputs ============ -->
+<section id="tab-inputs" class="tab-panel">
+  <div class="panel-head"><h2>Inputs — what gets summed into the stream</h2>
+    <p class="caption">Three id arrays, three tables, one sum. The decoder has no segment table — its objective never needed one.</p></div>
+  <div class="panes">
+    <div class="pane bert" id="inputs-bert"></div>
+    <div class="pane gpt2" id="inputs-gpt2"></div>
+  </div>
+</section>
+
+<!-- ============ tab 2: projections ============ -->
+<section id="tab-projections" class="tab-panel" hidden>
+  <div class="panel-head"><h2>Projections — Q, K, V and the 12×64 view</h2>
+    <p class="caption">One learned 768→768 (or fused 768→2304) projection, then a zero-math <span class="mono">view</span>: head <i>h</i> owns dims 64h…64h+63 of every token.</p></div>
+  <div class="controls-row">
+    <label class="control">Layer <input type="range" id="proj-layer" min="0" max="11" value="3" step="1"><span class="mono" id="proj-layer-label">L4</span></label>
+    <label class="control">Show <select id="proj-qkv"><option value="q">Q (query)</option><option value="k">K (key)</option><option value="v">V (value)</option></select></label>
+  </div>
+  <div class="panes">
+    <div class="pane bert" id="proj-bert"></div>
+    <div class="pane gpt2" id="proj-gpt2"></div>
+  </div>
+</section>
+
+<!-- ============ tab 3: attention ============ -->
+<section id="tab-attention" class="tab-panel" hidden>
+  <div class="panel-head"><h2>Attention — same machinery, one line of difference</h2>
+    <p class="caption">Rows = query (looking), columns = key (looked at); each row sums to 1. The decoder inserts −∞ above the diagonal <b>before</b> softmax — the leak argument made visible.</p></div>
+  <div class="controls-row">
+    <label class="control">Layer <input type="range" id="att-layer" min="0" max="11" value="3" step="1"><span class="mono" id="att-layer-label">L4</span></label>
+    <label class="control">Head <input type="range" id="att-head" min="0" max="11" value="10" step="1"><span class="mono" id="att-head-label">H11</span></label>
+    <label class="toggle"><input type="checkbox" id="att-mask" checked> shade blocked cells</label>
+  </div>
+  <div class="panes">
+    <div class="pane bert" id="att-bert"></div>
+    <div class="pane gpt2" id="att-gpt2"></div>
+  </div>
+</section>
+
+<!-- ============ tab 4: the layer ============ -->
+<section id="tab-layer" class="tab-panel" hidden>
+  <div class="panel-head"><h2>The layer — tokens talk, tokens think</h2>
+    <p class="caption">Attention moves information between tokens; the FFN transforms each token alone (768→3072→768, two-thirds of the layer's parameters). The order of LayerNorm differs: BERT normalizes <i>after</i> each add (post-LN), GPT-2 normalizes <i>before</i> each sublayer (pre-LN).</p></div>
+  <div class="controls-row">
+    <label class="control">Layer <input type="range" id="lyr-layer" min="0" max="11" value="3" step="1"><span class="mono" id="lyr-layer-label">L4</span></label>
+  </div>
+  <div class="panes">
+    <div class="pane bert" id="lyr-bert"></div>
+    <div class="pane gpt2" id="lyr-gpt2"></div>
+  </div>
+</section>
+
+<!-- ============ tab 5: native task ============ -->
+<section id="tab-task" class="tab-panel" hidden>
+  <div class="panel-head"><h2>Native task — fill the blank vs continue the text</h2>
+    <p class="caption">Same size, same machinery. What differs is the interface the pretraining objective gave each model: the encoder repairs, the decoder continues.</p></div>
+  <div class="panes">
+    <div class="pane bert" id="task-bert"></div>
+    <div class="pane gpt2" id="task-gpt2"></div>
+  </div>
+</section>
+
+<div id="tooltip" class="tooltip" hidden></div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
