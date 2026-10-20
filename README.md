@@ -40,6 +40,10 @@ The server binds `127.0.0.1:8310` — change it at the bottom of `app.py`.
    mask shading the decoder's upper triangle (−∞ before softmax). Default
    sliders (L3·H10, token *it*) land on a row that puts 84.7% on
    *animal*. The badge on each pane reports the manual-vs-model diff.
+   The same head flips to an **arc diagram** — the sentence drawn twice,
+   one arrow per query→key edge, thickness = weight — where the encoder's
+   fans land on both sides and the decoder's only on the past: the mask
+   as missing arrows.
 4. **The layer** — the stage flow recomputed from weights: mix → W_O →
    residual (+LN order differs!) → FFN 768→3072→768. BERT is post-LN,
    GPT-2 pre-LN; the badge confirms the by-hand layer equals the model's

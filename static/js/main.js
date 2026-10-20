@@ -1,5 +1,5 @@
 /* transformer-internals — dual-pane controller */
-import { $, el, drawMatrix, drawStripe, chipRow, stackedNorms, showTip, barColor, disp } from "./views.js";
+import { $, el, drawMatrix, drawStripe, chipRow, stackedNorms, showTip, barColor, disp, arcDiagram } from "./views.js";
 
 const MODELS = [
   { id: "bert-base-uncased", fam: "bert", cls: "bert", name: "BERT-base · encoder" },
@@ -10,7 +10,7 @@ const state = {
   text: "", meta: null, tab: "inputs",
   tokenize: {}, forward: {},
   projLayer: 3, projQKV: "q", projToken: {},
-  attLayer: 3, attHead: 10, attQuery: {}, maskOn: true,
+  attLayer: 3, attHead: 10, attQuery: {}, maskOn: true, attView: "grid",
   lyrLayer: 3,
   task: { maskText: "", temperature: 1.0, topK: 50, nNew: 8, results: {} },
 };
@@ -62,6 +62,11 @@ async function boot() {
   $("att-layer").oninput = e => { state.attLayer = +e.target.value; $("att-layer-label").textContent = "L" + (state.attLayer + 1); renderAttention(); };
   $("att-head").oninput = e => { state.attHead = +e.target.value; $("att-head-label").textContent = "H" + (state.attHead + 1); renderAttention(); };
   $("att-mask").onchange = e => { state.maskOn = e.target.checked; renderAttention(); };
+  $("att-view").onchange = e => {
+    state.attView = e.target.value;
+    $("att-mask-wrap").hidden = state.attView === "arcs";
+    renderAttention();
+  };
   $("lyr-layer").oninput = e => { state.lyrLayer = +e.target.value; $("lyr-layer-label").textContent = "L" + (state.lyrLayer + 1); renderLayer(); };
   await run();
 }
@@ -202,6 +207,8 @@ async function renderProjections() {
 
 /* ---------------- tab 3: attention ---------------- */
 async function renderAttention() {
+  document.querySelector("#tab-attention .panes").classList
+    .toggle("stacked", state.attView === "arcs");
   for (const m of MODELS) {
     const p = pane(m.fam);
     p.innerHTML = "";
@@ -211,12 +218,31 @@ async function renderAttention() {
     p.appendChild(head3(m.fam));
     p.appendChild(chipRow(tk.tokens.map(disp), { special: tk.special, sel: q,
       onPick: (i) => { state.attQuery[m.fam] = i; renderAttention(); } }));
+    const r = await post("/api/row", { model: m.id, text: state.text, layer: L, head: H, query: q });
+    if (r.error) { p.appendChild(errBox(r.error)); continue; }
+    p.querySelector("h3").appendChild(
+      el("span", "badge", `manual ≡ model (diff ${r.verify_diff})`));
+    const n = tk.n;
+    if (state.attView === "arcs") {
+      const b = el("div", "block");
+      b.appendChild(el("h4", null, `L${L + 1} · H${H + 1} — arrows: query (bottom) → key (top)`));
+      const sc = el("div", "scroll");
+      sc.style.padding = "4px";
+      b.appendChild(sc);
+      p.appendChild(b);
+      const { truncated } = arcDiagram(sc, tk.tokens.map(disp), fw.attention[L][H], m.fam,
+        { sel: q, onPick: (i) => { state.attQuery[m.fam] = i; renderAttention(); } });
+      if (truncated) p.appendChild(el("div", "hint", "long input — only the top 8 edges per token are drawn."));
+      p.appendChild(el("div", "hint", m.fam === "bert"
+        ? "Bidirectional, as arrows: every token's fan lands on both sides. Hover a token (either row) to isolate its fan; click to pin it as the query."
+        : "Causal, as arrows: every fan lands only on itself and the past — the mask is the missing right side. Hover a token to see where its budget went."));
+      continue;
+    }
     const b = el("div", "block");
     b.appendChild(el("h4", null, `L${L + 1} · H${H + 1} — the (N, N) grid`));
     const cv = el("canvas");
     b.appendChild(el("div", "scroll")).appendChild(cv);
     p.appendChild(b);
-    const n = tk.n;
     let shade = null;
     if (m.fam === "gpt2" && state.maskOn)
       shade = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => j > i));
@@ -224,10 +250,6 @@ async function renderAttention() {
       cellW: 30, cellH: 22,
       onHover: (x, y, ri, ci, v, blocked) => showTip(x, y,
         `${ri} → ${ci}: <span class="mono">${(v * 100).toFixed(1)}%</span>${blocked ? " (−∞ before softmax)" : ""}`) });
-    const r = await post("/api/row", { model: m.id, text: state.text, layer: L, head: H, query: q });
-    if (r.error) { p.appendChild(errBox(r.error)); continue; }
-    p.querySelector("h3").appendChild(
-      el("span", "badge", `manual ≡ model (diff ${r.verify_diff})`));
     const rb = el("div", "block rowbars");
     rb.appendChild(el("h4", null, `row of “${disp(r.query_str)}” — sorted`));
     const idx = Array.from({ length: n }, (_, i) => i).sort((a, b2) => r.weights[b2] - r.weights[a]);

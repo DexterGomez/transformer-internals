@@ -114,3 +114,6 @@ canvas { display: block; }
 .tooltip { position: fixed; z-index: 30; background: #ffffff; border: 1px solid var(--line);
   box-shadow: 0 3px 12px rgba(20, 25, 40, .12); border-radius: 6px; padding: 5px 9px;
   font-size: 12px; pointer-events: none; }
+
+.arcsvg text { user-select: none; }
+#tab-attention .panes.stacked { grid-template-columns: 1fr; }

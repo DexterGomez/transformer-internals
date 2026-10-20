@@ -63,7 +63,8 @@
   <div class="controls-row">
     <label class="control">Layer <input type="range" id="att-layer" min="0" max="11" value="3" step="1"><span class="mono" id="att-layer-label">L4</span></label>
     <label class="control">Head <input type="range" id="att-head" min="0" max="11" value="10" step="1"><span class="mono" id="att-head-label">H11</span></label>
-    <label class="toggle"><input type="checkbox" id="att-mask" checked> shade blocked cells</label>
+    <label class="control">View <select id="att-view"><option value="grid">matrix + row</option><option value="arcs">arc diagram</option></select></label>
+    <label class="toggle" id="att-mask-wrap"><input type="checkbox" id="att-mask" checked> shade blocked cells</label>
   </div>
   <div class="panes">
     <div class="pane bert" id="att-bert"></div>
