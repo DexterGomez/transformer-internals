@@ -248,7 +248,7 @@ async function renderAttention() {
     });
     p.appendChild(rb);
     p.appendChild(el("div", "hint", m.fam === "bert"
-      ? "Bidirectional: the row spans every token. Sliders L4·H11 reproduce the lecture's 84.7% → animal."
+      ? "Bidirectional: the row spans every token. Sliders L4·H11 put 84.7% of the row on animal."
       : "Causal: cells above the diagonal are −∞ before softmax — the query row cannot spend budget on the future."));
   }
 }

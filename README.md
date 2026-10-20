@@ -1,25 +1,29 @@
 # transformer-internals — encoder vs decoder, one layer at a time
 
-Interactive lecture tool for the decoder unit's opening arc. One sentence,
-two models side by side — `bert-base-uncased` (encoder) and `gpt2` (decoder,
-small) — with every internal stage opened and **recomputed by hand from the
+An interactive tool for opening up a Transformer. One sentence, two models
+side by side — `bert-base-uncased` (encoder) and `gpt2` (decoder, small) —
+with every internal stage opened and **recomputed by hand from the
 weights**, not just read off the forward pass. Same geometry on both sides
 (12 layers · 12 heads · 768 dims), so every visible difference is
 architecture, not size.
 
-Built on the bert-playground pattern: FastAPI + vanilla JS, no frameworks,
-no CDNs, runs offline in the classroom.
+FastAPI + vanilla JS, no build step, no CDNs. Once the two checkpoints are
+downloaded it runs fully offline.
 
-## Run
+## Install and run
+
+Requires Python 3.11+. On first use each model (~1 GB combined) downloads
+from Hugging Face and is cached under `~/.cache/huggingface`.
 
 ```bash
-cd weeks/08-generative-ai/demos/transformer-internals
-.venv/bin/python app.py          # → http://127.0.0.1:8310
+python3.11 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python app.py        # → http://127.0.0.1:8310
 ```
 
-Both models load from the local HF cache (~20 s first forward pass, instant
-after — payloads are cached per model+text). Rebuild the venv with
-`python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt`.
+The first forward pass per model takes ~20 s (checkpoint loads into
+memory); after that, payloads are cached per model+text and feel instant.
+The server binds `127.0.0.1:8310` — change it at the bottom of `app.py`.
 
 ## The five tabs (and the story they tell)
 
@@ -34,7 +38,7 @@ after — payloads are cached per model+text). Rebuild the venv with
 3. **Attention** — the (N, N) grid per layer/head with hover values, the
    query row sorted as bars with raw q·k/8 annotations, and the causal
    mask shading the decoder's upper triangle (−∞ before softmax). Default
-   sliders (L3·H10, token *it*) reproduce the lecture's verified 84.7% →
+   sliders (L3·H10, token *it*) land on a row that puts 84.7% on
    *animal*. The badge on each pane reports the manual-vs-model diff.
 4. **The layer** — the stage flow recomputed from weights: mix → W_O →
    residual (+LN order differs!) → FFN 768→3072→768. BERT is post-LN,
@@ -55,7 +59,7 @@ after — payloads are cached per model+text). Rebuild the venv with
 - Tab 4 → "attention moves information, the FFN thinks — and two-thirds
   of every layer is the FFN."
 - Tab 5 closes the arc: encoder repairs, decoder continues; generation
-  = the decoding loop students just steered with sliders.
+  = the decoding loop you just steered with sliders.
 
 ## Engine self-verification
 
@@ -65,6 +69,8 @@ payloads carry the max-abs diff vs the model's own output (attention rows
 same submodules, so it matches bitwise). If a badge ever shows a large
 diff, something regressed — trust the badge, not the pretty colors.
 
-## Port
+## Project layout
 
-8310 (playground family: 8303 bert-playground … 8309 semantic lab).
+- `app.py` — FastAPI server (seven JSON endpoints, static file serving)
+- `internals.py` — the engine: tokenization, manual recompute, verification
+- `static/` — the UI (vanilla JS + CSS, no dependencies)
